@@ -1,8 +1,11 @@
-using OpenAI;
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
+using System.Net;
+using System.IO;
 
 namespace Kuzu.Modules
 {
@@ -35,70 +38,66 @@ namespace Kuzu.Modules
             SystemParametersInfo(0x14, 0, path, 0x01);
         }
 
-        public async void RunCommand()
+        public void RunCommand()
         {
-            string[] commandParts = Command.Split(' ');
-
-            switch (commandParts[0])
+            if (Command.StartsWith("bg"))
             {
-                case "bg":
-                    if (commandParts.Length < 2)
-                    {
-                        Console.WriteLine("Invalid command syntax: bg [background]");
-                    }
-                    else if (commandParts[1].Equals("Black", StringComparison.OrdinalIgnoreCase))
-                    {
-                        SetBackground("C:/Users/abdul/source/repos/Kuzu/Modules/Backgrounds/Black.jpg");
-                    }
-                    else if (commandParts[1].Equals("Mizuhara", StringComparison.OrdinalIgnoreCase))
-                    {
-                        SetBackground("C:/Users/abdul/source/repos/Kuzu/Modules/Backgrounds/Mizuhara3.png");
-                    }
-                    else
-                    {
-                        Console.WriteLine("Invalid background: " + commandParts[1]);
-                    }
-                    break;
-                case "chatgpt":
-                    if (commandParts.Length < 2)
-                    {
-                        Console.WriteLine("Invalid command syntax: chatgpt [message]");
-                    }
-                    else
-                    {
-                        string message = string.Join(" ", commandParts.Skip(1));
-                        string response = await GetGPTResponseAsync(message);
-                        Console.WriteLine("ChatGPT: " + response);
-                    }
-                    break;
-                default:
-                    Console.WriteLine("Command not found");
-                    break;
+                string[] args = Command.Split(' ');
+
+                if (args.Length < 2)
+                {
+                    Console.WriteLine("Error: Missing URL argument");
+                    return;
+                }
+
+                string url = args[1];
+
+                // Download the image from the URL
+                WebClient webClient = new WebClient();
+                byte[] data = webClient.DownloadData(url);
+
+                // Save the image to a temporary file
+                string tempFilePath = Path.Combine(Path.GetTempPath(), "bg.png");
+                File.WriteAllBytes(tempFilePath, data);
+
+                // Set the desktop background
+                SetBackground(tempFilePath);
+
+                Console.WriteLine("Background set successfully");
             }
-        }
-
-        private async Task<string> GetGPTResponseAsync(string message)
-        {
-            string apiKey = "YOUR_API_KEY_HERE";
-            string modelId = "gpt-3.5-turbo";
-            string prompt = "Conversation with ChatGPT:\n\nUser: " + message + "\nChatGPT:";
-
-            OpenAIRequest request = new OpenAIRequest(prompt, modelId, 1, 50, apiKey);
-            OpenAIResponse response = await OpenAICompletion.CreateCompletionAsync(request);
-
-            if (response != null && response.choices != null && response.choices.Count > 0)
+            else if (Command.StartsWith("chatgpt"))
             {
-                return response.choices[0].text.Trim();
+                string prompt = Command.Substring("chatgpt".Length).Trim();
+
+                if (prompt == "")
+                {
+                    Console.WriteLine("Error: Missing prompt argument");
+                    return;
+                }
+
+                // Get OpenAI API key from environment variable
+                string apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+                if (apiKey == null || apiKey == "")
+                {
+                    Console.WriteLine("Error: Missing OPENAI_API_KEY environment variable");
+                    return;
+                }
+
+                // Send request to OpenAI API
+                OpenAI.API api = new OpenAI.API(apiKey, modelId: "text-davinci-002");
+                string response = api.Completions.Create(engine: "davinci", prompt: prompt, maxTokens: 150).Choices[0].Text.TrimEnd();
+
+                Console.WriteLine(response);
             }
             else
             {
-                return "Sorry, I could not generate a response.";
+                Console.WriteLine("Command not found");
             }
         }
 
         public void AutomaticRun()
         {
-            while (AllowedToRun)
+            while (AllowedToRun == true)
             {
                 Write();
                 RunCommand();
