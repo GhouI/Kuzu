@@ -84,8 +84,8 @@ namespace Kuzu.Modules
                 }
 
                 // Send request to OpenAI API
-                OpenAI.API api = new OpenAI.API(apiKey, modelId: "text-davinci-002");
-                string response = api.Completions.Create(engine: "davinci", prompt: prompt, maxTokens: 150).Choices[0].Text.TrimEnd();
+                OpenAI.API api = new OpenAI.API(apiKey, modelId: "gpt-4");
+                string response = api.Completions.Create(engine: "gpt-4", prompt: prompt, maxTokens: 150).Choices[0].Text.TrimEnd();
 
                 Console.WriteLine(response);
             }
